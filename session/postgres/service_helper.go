@@ -837,7 +837,7 @@ func (s *Service) getTrackEventsByTrackLists(
 					AND (expires_at IS NULL OR expires_at > $5)
 					AND created_at > $6
 					AND deleted_at IS NULL
-					ORDER BY created_at DESC
+					ORDER BY created_at DESC, id DESC
 					LIMIT $7`, s.tableSessionTracks)
 				args = []any{key.AppName, key.UserID, key.SessionID, track, now, afterTime, limit}
 			} else {
@@ -846,7 +846,7 @@ func (s *Service) getTrackEventsByTrackLists(
 					AND (expires_at IS NULL OR expires_at > $5)
 					AND created_at > $6
 					AND deleted_at IS NULL
-					ORDER BY created_at DESC`, s.tableSessionTracks)
+					ORDER BY created_at DESC, id DESC`, s.tableSessionTracks)
 				args = []any{key.AppName, key.UserID, key.SessionID, track, now, afterTime}
 			}
 			queries = append(queries, &trackQuery{

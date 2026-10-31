@@ -2338,6 +2338,35 @@ func TestGetTrackEvents_WithLimit(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+// Track events persist pairs of events (e.g. TEXT_MESSAGE_END and RUN_FINISHED)
+// within the same wall-clock tick, so created_at ties are common. The id
+// tiebreaker is required to keep retrieval order stable and consistent with
+// insertion order; without it the consumer-side reducer misreads run boundaries.
+func TestGetTrackEvents_OrdersByCreatedAtThenID(t *testing.T) {
+	s, mock, db := setupMockService(t, nil)
+	defer db.Close()
+
+	key := session.Key{
+		AppName:   "test-app",
+		UserID:    "test-user",
+		SessionID: "session-1",
+	}
+	sessState := &SessionState{
+		State: session.StateMap{
+			"tracks": []byte(`["alpha"]`),
+		},
+	}
+
+	mock.ExpectQuery("ORDER BY created_at DESC, id DESC$").
+		WithArgs("test-app", "test-user", "session-1", "alpha",
+			sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"event"}))
+
+	_, err := s.getTrackEvents(context.Background(), []session.Key{key}, []*SessionState{sessState}, 0, time.Time{})
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestAppendEvent_InvalidKey(t *testing.T) {
 	s, _, db := setupMockService(t, nil)
 	defer db.Close()
